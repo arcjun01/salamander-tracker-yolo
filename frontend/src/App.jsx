@@ -1,18 +1,35 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 
 function App() {
-  const [data, setData] = useState(null)
+  const [file, setFile] = useState(null)
+  const [videoUrl, setVideoUrl] = useState(null)
 
-  useEffect(() => {
-    fetch("http://localhost:8000/")
-      .then(res => res.json())
-      .then(json => setData(json))
-  }, [])
+  async function handleSubmit(e) {
+    e.preventDefault()
+    const form = new FormData()
+    form.append("video", file)
+    const res = await fetch("http://localhost:8000/track", {
+      method: "POST",
+      body: form,
+    })
+    const data = await res.json()
+    setVideoUrl(data.video_url)
+  }
 
   return (
     <div>
       <h1>Salamander Tracker</h1>
-      <pre>{JSON.stringify(data, null, 2)}</pre>
+      <form onSubmit={handleSubmit}>
+        <input
+          type="file"
+          accept="video/*"
+          onChange={(e) => setFile(e.target.files[0])}
+        />
+        <button type="submit" disabled={!file}>Upload</button>
+      </form>
+      {videoUrl && (
+        <video src={videoUrl} controls width={640} />
+      )}
     </div>
   )
 }
