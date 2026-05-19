@@ -1,3 +1,4 @@
+from collections import defaultdict
 import cv2
 from ultralytics import YOLO
 import time
@@ -49,10 +50,13 @@ def start_track(video: UploadFile = File(...)):
     output_path = VIDEOS_DIR / "output.mp4"
     writer = cv2.VideoWriter(
         str(output_path),
-        cv2.VideoWriter_fourcc(*"avc1"),
+        cv2.VideoWriter_fourcc(*"mp4v"),
         fps,
         (width, height),
     )
+
+    frames_seen = defaultdict(int)
+    label_for = {}
 
     # Process every frame
     for frame_idx in range(total):
@@ -60,16 +64,36 @@ def start_track(video: UploadFile = File(...)):
         if not ok:
             break
         result = model.track(frame, persist=True, verbose=False)[0]
+
         writer.write(result.plot())
+
+        boxes = result.boxes
+        if boxes is not None and boxes.id is not None:
+            for tid, cls_id in zip(boxes.id.tolist(), boxes.cls.tolist()):
+                frames_seen[int(tid)] += 1
+                label_for[int(tid)] = model.names[int(cls_id)]
         if frame_idx % 30 == 0:
             print(f"frame {frame_idx}/{total}")
 
     cap.release()
     writer.release()
 
+    print("frames_seen:", dict(frames_seen))
+    print("label_for:", label_for)
+
+    tracks = [
+        {
+            "track_id": tid,
+            "time_on_screen_s": round(count / fps, 2),
+            "label": label_for[tid],
+        }
+        for tid, count in frames_seen.items()
+    ]
+
     return {
         "status": "done",
         "video_url": f"http://localhost:8000/videos/output.mp4?t={int(time.time())}",
+        "tracks": tracks,
     }
 
 
