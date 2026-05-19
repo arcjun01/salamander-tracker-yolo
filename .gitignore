@@ -1,0 +1,22 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+.env
+
+# YOLO
+runs/
+*.pt
+!best.pt
+
+# Videos
+backend/uploads/
+backend/outputs/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# OS
+.DS_Store
