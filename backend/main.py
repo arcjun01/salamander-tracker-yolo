@@ -60,6 +60,9 @@ def run_track_job():
 
         frames_seen = defaultdict(int)
         label_for = {}
+        last_pos = {}
+        total_distance = defaultdict(float)
+
 
         for frame_idx in range(total):
             ok, frame = cap.read()
@@ -70,10 +73,20 @@ def run_track_job():
 
             boxes = result.boxes
             if boxes is not None and boxes.id is not None:
-                for tid, cls_id in zip(boxes.id.tolist(), boxes.cls.tolist()):
+                for tid, cls_id, box in zip(boxes.id.tolist(), boxes.cls.tolist(), boxes.xyxy.tolist()):
                     frames_seen[int(tid)] += 1
                     label_for[int(tid)] = model.names[int(cls_id)]  # use model names
 
+                    # calculate center of bounding box
+                    cx = (box[0] + box[2]) / 2
+                    cy = (box[1] + box[3]) / 2
+
+                    # add distance from last position
+                    if tid in last_pos:
+                        px, py = last_pos[tid]
+                        total_distance[tid] += ((cx - px) ** 2 + (cy - py) ** 2) ** 0.5
+                    
+                    last_pos[tid] = (cx, cy)
             job["percent"] = int((frame_idx + 1) / total * 100)
             if frame_idx % 30 == 0:
                 print(f"frame {frame_idx}/{total}")
@@ -86,6 +99,7 @@ def run_track_job():
                 "track_id": tid,
                 "time_on_screen_s": round(count / fps, 2),
                 "label": label_for.get(tid, "unknown"),  # safe fallback
+                "distance_px": round(total_distance[tid], 1),
             }
             for tid, count in frames_seen.items()
         ]
